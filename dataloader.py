@@ -4,37 +4,56 @@ from torchvision import transforms
 import pandas as pd
 import numpy as np
 
-from sklearn.preprocessing import LabelEncoder
+import cv2
+
+import tensorflow as tf
 
 class WhaleDoDataset(torch.utils.data.Dataset):
-    def __init__(self, csv_path, transform=None):
-        self.df = pd.read_csv(csv_path)
-        self.le = LabelEncoder()
-        self.labels = self.le.fit_transform(self.df['whale_id'])
-        self.transform = transform
-        
-        '''
-        https://pytorch.org/tutorials/beginner/basics/data_tutorial.html#creating-a-custom-dataset-for-your-files
-        https://github.com/KevinMusgrave/pytorch-metric-learning/blob/master/examples/notebooks/TripletMarginLossMNIST.ipynb
-
-        overload the __len__ and __getitem__ methods here appropriately
-
-        transformations is an optional set of augmentations that we can do
-
-        pick a decent height and width? (write a simple script to find the max width and height of the images) 443, 291
-
-        don't forget to rotate the left / right images!
-
-        WE ALSO NEED TO NORMALIZE THE IMAGES (VERY IMPORTANT)
-        '''
-
-        pass
+    def __init__(self, df, config, augmentations):
+        self.df = df
+        self.augmentations = augmentations
+        self.config = config
+        self.normalize = transforms.Normalize(mean=self.config['dataset']['mean'], std=self.config['dataset']['std'])
 
     def __len__(self):
         return len(self.df)
     
-    def __getitem__(self, idx):
-        #just generate a random image and label for testing purposes
-        # do transformations here which is not implemented cause I'm just testing right now
+    def __getitem__(self, idx, normalize=True):
 
-        return torch.rand((3,443,291)), self.labels[idx]
+        img = cv2.imread(self.df['path'][idx])
+        label = self.df['whale_id'][idx]
+
+        if self.df['viewpoint'][idx] == -1:
+            assert img.shape[0] < img.shape[1]
+            img = np.rot90(img, k = 1, axes = (0, 1))
+        
+        elif self.df['viewpoint'][idx] == 1:
+            assert img.shape[0] < img.shape[1]
+            img = np.rot90(img, k = -1, axes = (0, 1))
+
+        if self.augmentations:
+            img = tf.image.random_brightness(img, 0.2)
+
+            img = tf.image.random_contrast(img, 0.8, 1.2)
+
+            random_crop_scale = np.random.uniform(0.75, 1)
+            crop_size = (int(img.shape[0]*random_crop_scale), int(img.shape[1]*random_crop_scale), img.shape[2])
+            img = tf.image.random_crop(img, crop_size)
+
+        img = tf.image.resize_with_pad(img, self.config['dataset']['height'], self.config['dataset']['width']).numpy()
+
+        img = torch.tensor(img.transpose((2, 0, 1)))
+
+        if normalize:
+            img = self.normalize(img)
+
+        if self.config['dataset']['channels'] == 4:
+            viewpoint_mask = torch.full((1, self.config['dataset']['height'],self.config['dataset']['width']),
+                                         self.df['viewpoint'][idx],
+                                         dtype=torch.float32)
+            img = torch.cat((img, viewpoint_mask), dim=0)
+
+        if self.config['dataset']['channels'] == 5:
+            pass #figure out how to add date information
+
+        return img, label
