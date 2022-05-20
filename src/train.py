@@ -1,6 +1,6 @@
 from pytorch_metric_learning import losses
-from dataloader import WhaleDoDataset
-from models import WhaleDoModel
+from src.dataloader import WhaleDoDataset
+from src.models import WhaleDoModel
 from torch.utils.data import DataLoader
 import torch
 
