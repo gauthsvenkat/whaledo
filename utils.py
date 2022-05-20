@@ -5,14 +5,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def load_csv_and_parse_dataframe(csv_path, root_dir='data/', drop_columns=['image_id', 'timestamp', 'encounter_id']):
-    df = pd.read_csv(csv_path).drop(columns=drop_columns)
-    
+    df = pd.read_csv(csv_path).drop(columns=drop_columns) #drop useless columns
+
+    #init label encoder and convert whale_id to categorical values
     le = LabelEncoder()
     labels = le.fit_transform(df['whale_id'])
 
-    df['path'] = root_dir + df['path']
-    df['viewpoint'] = df['viewpoint'].map({'top': 0, 'left': -1, 'right': 1})
-    df['whale_id'] = labels
+    df['path'] = root_dir + df['path'] #convert path to full path
+    df['viewpoint'] = df['viewpoint'].map({'top': 0, 'left': -1, 'right': 1}) #convert viewpoint to 0, -1, 1
+    df['whale_id'] = labels #convert whale_id to categorical values
 
     return df, le
 

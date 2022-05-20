@@ -55,20 +55,31 @@ train_data, test_data = WhaleDoDataset(train_df, config, augmentations=True), Wh
 train_loader = DataLoader(train_data, config['batch_size'], shuffle=True)
 test_loader = DataLoader(test_data, config['batch_size'], shuffle=False)
 
-
+# init loss function and a miner. The miner samples for training samples
 loss_func = losses.TripletMarginLoss(margin=config['margin'])
 miner = miners.TripletMarginMiner(margin=config['margin'])
 
+# init model and optimizer
 model = WhaleDoModel(config)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 for i, (x_batch, y_batch) in enumerate(train_loader):
+
+    #move tensors to device (gpu or cpu)
+    x_batch, y_batch = x_batch.to(config['device']), y_batch.to(config['device'])
+
+    #zero the parameter gradients
     optimizer.zero_grad()
 
+    #compute embeddings
     embeddings = model(x_batch)
 
+    #mine for hard pairs
     mined_pairs = miner(embeddings, y_batch)
+    #compute loss
     loss = loss_func(embeddings, y_batch, mined_pairs)
 
+    #calculate gradients
     loss.backward()
+    #update weights
     optimizer.step()
