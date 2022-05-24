@@ -26,8 +26,8 @@ def predict(query_image_id, database_image_ids):
 
 
 def main():
-    scenarios_df = pd.read_csv("/code_execution/query_scenarios.csv")
-    metadata_df = pd.read_csv("/code_execution/metadata.csv")
+    scenarios_df = pd.read_csv(DATA_DIRECTORY / "query_scenarios.csv")
+    metadata_df = pd.read_csv(DATA_DIRECTORY  / "metadata.csv")
 
     predictions = []
 
