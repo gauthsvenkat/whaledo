@@ -4,6 +4,7 @@ from models import WhaleDoModel
 from torch.utils.data import DataLoader
 import torch
 from sklearn.model_selection import StratifiedKFold, train_test_split
+import os
 
 from utils import *
 
@@ -30,10 +31,14 @@ config = {
         'output_dim': 2
     },
 
-    'batch_size': 8,
+    'batch_size': 32,
     'device': 'cpu',
     'num_epochs': 1000,
-    'margin': 0.2,
+    'margin': 0.4,
+    'save_every': 100,
+    'lr': 0.001,
+    'model_save_dir': 'models/',
+    'model_save_name': 'whaledo_model_{}.pth',
 }
 
 # load and parse the dataframe and get the label encoder as well
@@ -61,7 +66,11 @@ miner = miners.TripletMarginMiner(margin=config['margin'])
 
 # init model and optimizer
 model = WhaleDoModel(config)
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+optimizer = torch.optim.Adam(model.parameters(), lr=config['lr'])
+
+# create directories if they don't exist
+os.makedirs(config['model_save_dir'], exist_ok=True)
+
 
 for i, (x_batch, y_batch) in enumerate(train_loader):
 
@@ -83,3 +92,11 @@ for i, (x_batch, y_batch) in enumerate(train_loader):
     loss.backward()
     #update weights
     optimizer.step()
+
+    #print loss
+    print('Epoch: {}/{}'.format(i, config['num_epochs']), 'Loss: {:.4f}'.format(loss.item()))
+
+    #save every n epochs except the first
+    if i % config['save_every'] == 0 and i != 0:
+        print('Saving model...')
+        torch.save(model, os.path.join(config['model_save_dir'], config['model_save_name'].format(i)))
