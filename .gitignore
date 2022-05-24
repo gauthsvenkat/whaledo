@@ -1,3 +1,8 @@
 *.pdf
 *.csv
 *.zip
+.ipynb_checkpoints/
+.python-version
+.vscode/
+__pycache__/
+.idea/
