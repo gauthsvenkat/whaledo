@@ -100,7 +100,7 @@ pack-submission:
 ifneq (,$(wildcard ./submission/submission.zip))
 	$(error You already have a submission/submission.zip file. Rename or remove that file (e.g., rm submission/submission.zip).)
 endif
-	cd submission_src; zip -r ../submission/submission.zip ./*
+	cd src; zip -r ../submission/submission.zip ./*
 
 
 ## Runs container using code from `submission/submission.zip` and data from `data/`
