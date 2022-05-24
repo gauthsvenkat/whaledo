@@ -1,61 +1,111 @@
+from distutils.command.config import config
 from pathlib import Path
+
+from loguru import logger
 import pandas as pd
+from sklearn.metrics.pairwise import cosine_similarity
+import torch
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+
+
+from dataloader import WhaleDoDataset
+
+config = {
+    'csv_path': 'data/metadata.csv',
+    'root_dir': 'data/',
+
+    'dataset' : {
+        'channels' : 4,
+        'height': None,
+        'width': None,
+        'mean': None,
+        'std': None,
+    },
+
+    'backbone' : {
+        'model': 'resnet18',
+        'rep_dim': 512,
+        'pretrained': True,
+    },
+
+    'projector' : {
+        'hidden_dim': 1024,
+        'output_dim': 2
+    },
+
+    'batch_size': 32,
+    'device': 'cpu',
+    'num_epochs': 1000,
+    'margin': 0.4,
+    'save_every': 100,
+    'lr': 0.001,
+    'model_save_dir': 'models/',
+    'model_save_name': 'whaledo_model_{}.pth',
+}
 
 ROOT_DIRECTORY = Path("/code_execution")
-DATA_DIRECTORY = ROOT_DIRECTORY / "data"
-OUTPUT_FILE = ROOT_DIRECTORY / "submission/submission.csv"
+PREDICTION_FILE = ROOT_DIRECTORY / "submission" / "submission.csv"
+DATA_DIRECTORY = ROOT_DIRECTORY / config['root_dir']
 
 
-def predict(query_image_id, database_image_ids):
-    """
-    Predict function of our model.
-    :param query_image_id: identifier of the query_image from the queries/scenario##.csv file.
-        This is the image we need to match against the database.
-    :param database_image_ids: identifier of the image you are returning for that query
-        These are the database images of other whales.
-    :return:
-        result_images: set of images we predict to be the same whale.
-        scores: confidence scores of how sure the model is it is the same whale.
-    """
-    raise NotImplementedError(
-        "This script is just a template. You should adapt it with your own code."
-    )
-    result_images = []  # Images that we match with the query_image
-    scores = []  # Confidence score, in the range [0.0, 1.0].
-    return result_images, scores
+logger.info("Starting main script")
+# load test set data and pretrained model
+query_scenarios = pd.read_csv(DATA_DIRECTORY / "query_scenarios.csv", index_col="scenario_id")
+metadata = pd.read_csv(DATA_DIRECTORY / "metadata.csv", index_col="image_id")
+logger.info("Loading pre-trained model")
+model = torch.load("model.pth")
 
+# we'll only precompute embeddings for the images in the scenario files (rather than all images), so that the
+# benchmark example can run quickly when doing local testing. this subsetting step is not necessary for an actual
+# code submission since all the images in the test environment metadata also belong to a query or database.
+scenario_imgs = []
+for row in query_scenarios.itertuples():
+    scenario_imgs.extend(pd.read_csv(DATA_DIRECTORY / row.queries_path).query_image_id.values)
+    scenario_imgs.extend(pd.read_csv(DATA_DIRECTORY / row.database_path).database_image_id.values)
+scenario_imgs = sorted(set(scenario_imgs))
+metadata = metadata.loc[scenario_imgs]
 
-def main():
-    scenarios_df = pd.read_csv(DATA_DIRECTORY / "query_scenarios.csv")
-    metadata_df = pd.read_csv(DATA_DIRECTORY  / "metadata.csv")
+# instantiate dataset/loader and generate embeddings for all images
+dataset = WhaleDoDataset(metadata, config, augmentations=False)
+dataloader = DataLoader(dataset, config['batch_size'], shuffle=False)
+embeddings = []
+model.eval()
 
-    predictions = []
+logger.info("Precomputing embeddings")
+for batch in tqdm(dataloader, total=len(dataloader)):
+    batch_embeddings = model(batch["image"])
+    batch_embeddings_df = pd.DataFrame(batch_embeddings.detach().numpy(), index=batch["image_id"])
+    embeddings.append(batch_embeddings_df)
 
-    for scenario_row in scenarios_df.itertuples():
+embeddings = pd.concat(embeddings)
+logger.info(f"Precomputed embeddings for {len(embeddings)} images")
 
-        queries_df = pd.read_csv(DATA_DIRECTORY / scenario_row.queries_path)
-        database_df = pd.read_csv(DATA_DIRECTORY / scenario_row.database_path)
+logger.info("Generating image rankings")
+# process all scenarios
+results = []
+for row in query_scenarios.itertuples():
+    # load query df and database images; subset embeddings to this scenario's database
+    qry_df = pd.read_csv(DATA_DIRECTORY / row.queries_path)
+    db_img_ids = pd.read_csv(DATA_DIRECTORY / row.database_path).database_image_id.values
+    db_embeddings = embeddings.loc[db_img_ids]
 
-        for query_row in queries_df.itertuples():
-            query_id = query_row.query_id
-            query_image_id = query_row.query_image_id
-            database_image_ids = database_df["database_image_id"].values
+    # predict matches for each query in this scenario
+    for qry in qry_df.itertuples():
+        # get embeddings; drop query from database, if it exists
+        qry_embedding = embeddings.loc[[qry.query_image_id]]
+        _db_embeddings = db_embeddings.drop(qry.query_image_id, errors='ignore')
 
-            # PREDICTION HAPPENS HERE
-            result_images, scores = predict(query_image_id, database_image_ids)
+        # compute cosine similarities and get top 20
+        sims = cosine_similarity(qry_embedding, _db_embeddings)[0]
+        top20 = pd.Series(sims, index=_db_embeddings.index).sort_values(0, ascending=False).head(20)
 
-            for pred_image_id, score in zip(result_images, scores):
-                predictions.append(
-                    {
-                        "query_id": query_id,
-                        "database_image_id": pred_image_id,
-                        "score": score,
-                    }
-                )
+        # append result
+        qry_result = pd.DataFrame(
+            {"query_id": qry.query_id, "database_image_id": top20.index, "score": top20.values}
+        )
+        results.append(qry_result)
 
-    predictions_df = pd.DataFrame(predictions)
-    predictions_df.to_csv(OUTPUT_FILE, index=False)
-
-
-if __name__ == "__main__":
-    main()
+logger.info(f"Writing predictions file to {PREDICTION_FILE}")
+submission = pd.concat(results)
+submission.to_csv(PREDICTION_FILE, index=False)

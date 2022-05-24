@@ -97,6 +97,6 @@ for i, (x_batch, y_batch) in enumerate(train_loader):
     print('Epoch: {}/{}'.format(i, config['num_epochs']), 'Loss: {:.4f}'.format(loss.item()))
 
     #save every n epochs except the first
-    if i % config['save_every'] == 0 and i != 0:
+    if i % config['save_every'] == 0:
         print('Saving model...')
         torch.save(model, os.path.join(config['model_save_dir'], config['model_save_name'].format(i)))
