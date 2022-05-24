@@ -50,10 +50,17 @@ class WhaleDoModel(torch.nn.Module):
         super(WhaleDoModel, self).__init__()
 
         self.config = config
-        self.backbone = BackBone(config['backbone_model'], config['input_dim'], config['rep_dim'], config['pretrained'], config['device'])
+        self.backbone = BackBone(config['backbone']['model'], 
+                                [config['dataset']['channels'], config['dataset']['height'], config['dataset']['width']],
+                                config['backbone']['rep_dim'], 
+                                config['backbone']['pretrained'], 
+                                config['device'])
         
         if config['projector'] is not None:
-            self.projector = Projector(config['rep_dim'], config['projector']['hidden_dim'], config['projector']['output_dim'], config['device'])
+            self.projector = Projector(config['backbone']['rep_dim'], 
+                                       config['projector']['hidden_dim'], 
+                                       config['projector']['output_dim'], 
+                                       config['device'])
         else:
             self.projector = None
         
@@ -68,16 +75,29 @@ class WhaleDoModel(torch.nn.Module):
 Example config
 
 config = {
-    'backbone_model': 'resnet18',
-    'input_dim': (3, 224, 224),
-    'rep_dim': 512,
-    'pretrained': True,
-    'device': 'cuda',
+    'csv_path': 'data/metadata.csv',
+    'root_dir': 'data/',
+
+    'dataset' : {
+        'channels' : 3,
+        'height': None,
+        'width': None,
+        'mean': None,
+        'std': None,
+    },
+
+    'backbone' : {
+        'model': 'resnet18',
+        'rep_dim': 512,
+        'pretrained': True,
+    },
 
     'projector' : {
         'hidden_dim': 1024,
         'output_dim': 2
-    }
+    },
+    
+    'device': 'cpu'
 }
 
 '''
