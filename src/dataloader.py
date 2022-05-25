@@ -9,10 +9,10 @@ import cv2
 import tensorflow as tf
 
 class WhaleDoDataset(torch.utils.data.Dataset):
-    def __init__(self, df, config, augmentations):
+    def __init__(self, df, config, mode='train'):
         self.df = df
-        self.augmentations = augmentations
         self.config = config
+        self.mode = mode
         self.normalize = transforms.Normalize(mean=self.config['dataset']['mean'], std=self.config['dataset']['std'])
 
     def __len__(self):
@@ -20,18 +20,20 @@ class WhaleDoDataset(torch.utils.data.Dataset):
     
     def __getitem__(self, idx, normalize=True):
 
-        img = cv2.imread(self.df['path'][idx])
-        label = self.df['whale_id'][idx]
+        img = cv2.imread(self.df.iloc[idx]['path'])
 
-        if self.df['viewpoint'][idx] == -1: # left of the whale
+        if self.mode == 'train' or self.mode == 'test': #load labels only for training and testing
+            label = self.df.iloc[idx]['whale_id']
+
+        if self.df.iloc[idx]['viewpoint'] == -1: # left of the whale
             assert img.shape[0] < img.shape[1]
             img = np.rot90(img, k = 1, axes = (0, 1))
         
-        elif self.df['viewpoint'][idx] == 1: # right of the whale
+        elif self.df.iloc[idx]['viewpoint'] == 1: # right of the whale
             assert img.shape[0] < img.shape[1]
             img = np.rot90(img, k = -1, axes = (0, 1))
 
-        if self.augmentations: # apply augmentations (train only)
+        if self.mode == 'train': # apply augmentations (train only)
             img = tf.image.random_brightness(img, 0.2)
 
             img = tf.image.random_contrast(img, 0.8, 1.2)
@@ -49,11 +51,22 @@ class WhaleDoDataset(torch.utils.data.Dataset):
 
         if self.config['dataset']['channels'] == 4: # add viewpoint as the 4th channel
             viewpoint_mask = torch.full((1, self.config['dataset']['height'],self.config['dataset']['width']),
-                                         self.df['viewpoint'][idx],
+                                         self.df.iloc[idx]['viewpoint'],
                                          dtype=torch.float32)
             img = torch.cat((img, viewpoint_mask), dim=0)
 
         if self.config['dataset']['channels'] == 5: # add date information as the 5th channel
             pass #figure out how to add date information
 
-        return img, label
+
+        if self.mode == 'train' or self.mode == 'test':
+            return {
+                'image_id' : self.df.index[idx],
+                'image' : img,
+                'label' : label
+            }
+        elif self.mode == 'runtime':
+            return {
+                'image_id' : self.df.index[idx],
+                'image' : img
+            }

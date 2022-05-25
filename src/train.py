@@ -9,7 +9,7 @@ import os
 from utils import *
 
 config = {
-    'csv_path': 'data/metadata.csv',
+    'csv_name': 'metadata.csv',
     'root_dir': 'data/',
 
     'dataset' : {
@@ -42,7 +42,7 @@ config = {
 }
 
 # load and parse the dataframe and get the label encoder as well
-df, label_encoder = load_csv_and_parse_dataframe(config['csv_path'], root_dir=config['root_dir']) 
+df, label_encoder = load_csv_and_parse_dataframe(config['csv_name'], root_dir=config['root_dir'], drop_columns=['timestamp', 'encounter_id'])
 # get the average height and width of the dataset (rotate if viewpoint -1 or 1 (left / right))
 config['dataset']['height'], config['dataset']['width'] = get_avg_height_width(df)
 # get the mean and std of the dataset
@@ -50,11 +50,9 @@ config['dataset']['mean'], config['dataset']['std'] = get_mean_and_std_of_datase
 
 # split the dataframe into train and test
 train_df, test_df = train_test_split(df, test_size=0.2, random_state=42, shuffle=True)#, stratify=df['whale_id']) #can't stratify if least populated class has only one member
-# reset index of the dataframe (indices get fucked when you split)
-train_df, test_df = train_df.reset_index(), test_df.reset_index()
 
 # create the dataset objects
-train_data, test_data = WhaleDoDataset(train_df, config, augmentations=True), WhaleDoDataset(test_df, config, augmentations=False)
+train_data, test_data = WhaleDoDataset(train_df, config, mode='train'), WhaleDoDataset(test_df, config, mode='test')
 
 # create dataloaders
 train_loader = DataLoader(train_data, config['batch_size'], shuffle=True)
@@ -72,10 +70,10 @@ optimizer = torch.optim.Adam(model.parameters(), lr=config['lr'])
 os.makedirs(config['model_save_dir'], exist_ok=True)
 
 
-for i, (x_batch, y_batch) in enumerate(train_loader):
+for i, batch in enumerate(train_loader):
 
     #move tensors to device (gpu or cpu)
-    x_batch, y_batch = x_batch.to(config['device']), y_batch.to(config['device'])
+    x_batch, y_batch = batch['image'].to(config['device']), batch['label'].to(config['device'])
 
     #zero the parameter gradients
     optimizer.zero_grad()

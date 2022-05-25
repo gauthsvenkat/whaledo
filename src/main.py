@@ -10,6 +10,7 @@ from tqdm import tqdm
 
 
 from dataloader import WhaleDoDataset
+from utils import *
 
 config = {
     'csv_path': 'data/metadata.csv',
@@ -43,6 +44,9 @@ config = {
     'model_save_dir': 'models/',
     'model_save_name': 'whaledo_model_{}.pth',
 }
+config['dataset']['height'], config['dataset']['width'] = get_avg_height_width(None)
+# get the mean and std of the dataset
+config['dataset']['mean'], config['dataset']['std'] = get_mean_and_std_of_dataset(None)
 
 ROOT_DIRECTORY = Path("/code_execution")
 PREDICTION_FILE = ROOT_DIRECTORY / "submission" / "submission.csv"
@@ -52,9 +56,9 @@ DATA_DIRECTORY = ROOT_DIRECTORY / config['root_dir']
 logger.info("Starting main script")
 # load test set data and pretrained model
 query_scenarios = pd.read_csv(DATA_DIRECTORY / "query_scenarios.csv", index_col="scenario_id")
-metadata = pd.read_csv(DATA_DIRECTORY / "metadata.csv", index_col="image_id")
+metadata, _ = load_csv_and_parse_dataframe(ROOT_DIRECTORY / config['csv_path'], root_dir=DATA_DIRECTORY)
 logger.info("Loading pre-trained model")
-model = torch.load("model.pth")
+model = torch.load("model.pth").to(config['device'])
 
 # we'll only precompute embeddings for the images in the scenario files (rather than all images), so that the
 # benchmark example can run quickly when doing local testing. this subsetting step is not necessary for an actual
@@ -66,15 +70,16 @@ for row in query_scenarios.itertuples():
 scenario_imgs = sorted(set(scenario_imgs))
 metadata = metadata.loc[scenario_imgs]
 
+
 # instantiate dataset/loader and generate embeddings for all images
-dataset = WhaleDoDataset(metadata, config, augmentations=False)
+dataset = WhaleDoDataset(metadata, config, mode='runtime')
 dataloader = DataLoader(dataset, config['batch_size'], shuffle=False)
 embeddings = []
 model.eval()
 
 logger.info("Precomputing embeddings")
 for batch in tqdm(dataloader, total=len(dataloader)):
-    batch_embeddings = model(batch["image"])
+    batch_embeddings = model(batch['image'].to(config['device']))
     batch_embeddings_df = pd.DataFrame(batch_embeddings.detach().numpy(), index=batch["image_id"])
     embeddings.append(batch_embeddings_df)
 
