@@ -32,7 +32,7 @@ config = {
     },
 
     'batch_size': 32,
-    'device': 'cpu',
+    'device': 'cuda' if torch.cuda.is_available() else 'cpu',
     'num_epochs': 1000,
     'margin': 0.4,
     'save_every': 100,
