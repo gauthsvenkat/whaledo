@@ -19,8 +19,10 @@ class WhaleDoDataset(torch.utils.data.Dataset):
         return len(self.df)
     
     def __getitem__(self, idx, normalize=True):
-
+        
         img = cv2.imread(self.df.iloc[idx]['path'])
+
+        assert img is not None, 'Image not found: {}'.format(self.df.iloc[idx]['path'])
 
         if self.mode == 'train' or self.mode == 'test': #load labels only for training and testing
             label = self.df.iloc[idx]['whale_id']
