@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader
 import torch
 from sklearn.model_selection import StratifiedKFold, train_test_split
 import os
+import time
 
 from utils import *
 
@@ -33,9 +34,9 @@ config = {
 
     'batch_size': 32,
     'device': 'cuda' if torch.cuda.is_available() else 'cpu',
-    'num_epochs': 1000,
+    'num_epochs': 10,
     'margin': 0.4,
-    'save_every': 100,
+    'save_every': 5,
     'lr': 0.001,
     'model_save_dir': 'models/',
     'model_save_name': 'whaledo_model_{}.pth',
@@ -62,39 +63,59 @@ test_loader = DataLoader(test_data, config['batch_size'], shuffle=False)
 loss_func = losses.TripletMarginLoss(margin=config['margin'])
 miner = miners.TripletMarginMiner(margin=config['margin'])
 
+
+device = config['device']
 # init model and optimizer
 model = WhaleDoModel(config)
 optimizer = torch.optim.Adam(model.parameters(), lr=config['lr'])
+model.to(device)
+
 
 # create directories if they don't exist
 os.makedirs(config['model_save_dir'], exist_ok=True)
 
 
-for i, batch in enumerate(train_loader):
+print_every = 10
+since = time.time()
 
-    #move tensors to device (gpu or cpu)
-    x_batch, y_batch = batch['image'].to(config['device']), batch['label'].to(config['device'])
+for epoch in range(config['num_epochs']):
+    steps = 0
+    for i, batch in enumerate(train_loader):
+        steps +=1 
 
-    #zero the parameter gradients
-    optimizer.zero_grad()
+        #move tensors to device (gpu or cpu)
+        x_batch, y_batch = batch['image'].to(config['device']), batch['label'].to(config['device'])
 
-    #compute embeddings
-    embeddings = model(x_batch)
+        #zero the parameter gradients
+        optimizer.zero_grad()
 
-    #mine for hard pairs
-    mined_pairs = miner(embeddings, y_batch)
-    #compute loss
-    loss = loss_func(embeddings, y_batch, mined_pairs)
+        #compute embeddings
+        embeddings = model(x_batch)
 
-    #calculate gradients
-    loss.backward()
-    #update weights
-    optimizer.step()
+        #mine for hard pairs
+        mined_pairs = miner(embeddings, y_batch)
+        #compute loss
+        loss = loss_func(embeddings, y_batch, mined_pairs)
 
-    #print loss
-    print('Epoch: {}/{}'.format(i, config['num_epochs']), 'Loss: {:.4f}'.format(loss.item()))
+        #calculate gradients
+        loss.backward()
+        #update weights
+        optimizer.step()
+
+        #print loss
+        if steps % print_every == 0:
+            print('Step:', steps, 'Loss: {:.4f}'.format(loss.item()))
 
     #save every n epochs except the first
-    if i % config['save_every'] == 0:
+    if epoch % config['save_every'] == 0:
         print('Saving model...')
-        torch.save(model, os.path.join(config['model_save_dir'], config['model_save_name'].format(i)))
+        torch.save(model, os.path.join(config['model_save_dir'], config['model_save_name'].format(epoch)))
+
+    print('Epoch: {}/{}'.format(epoch+1, config['num_epochs']), 'Loss: {:.4f}'.format(loss.item()))
+
+print('Saving model...')
+torch.save(model, os.path.join(config['model_save_dir'], config['model_save_name'].format(epoch)))
+
+
+time_elapsed = time.time() - since
+print(f'Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s')
