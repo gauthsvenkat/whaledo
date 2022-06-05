@@ -36,7 +36,7 @@ config = {
     },
 
     'batch_size': 32,
-    'device': 'cpu',
+    'device': 'cuda' if torch.cuda.is_available() else 'cpu',
     'num_epochs': 1000,
     'margin': 0.4,
     'save_every': 100,
@@ -58,7 +58,8 @@ logger.info("Starting main script")
 query_scenarios = pd.read_csv(DATA_DIRECTORY / "query_scenarios.csv", index_col="scenario_id")
 metadata, _ = load_csv_and_parse_dataframe(ROOT_DIRECTORY / config['csv_path'], root_dir=DATA_DIRECTORY)
 logger.info("Loading pre-trained model")
-model = torch.load("model.pth").to(config['device'])
+
+model = torch.load("model.pth", map_location=config['device']).to(config['device'])
 
 # we'll only precompute embeddings for the images in the scenario files (rather than all images), so that the
 # benchmark example can run quickly when doing local testing. this subsetting step is not necessary for an actual
