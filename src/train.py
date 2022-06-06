@@ -79,9 +79,7 @@ print_every = 10
 since = time.time()
 
 for epoch in range(config['num_epochs']):
-    steps = 0
     for i, batch in enumerate(train_loader):
-        steps +=1 
 
         #move tensors to device (gpu or cpu)
         x_batch, y_batch = batch['image'].to(config['device']), batch['label'].to(config['device'])
@@ -103,8 +101,8 @@ for epoch in range(config['num_epochs']):
         optimizer.step()
 
         #print loss
-        if steps % print_every == 0:
-            print('Step:', steps, 'Loss: {:.4f}'.format(loss.item()))
+        if (i+1) % print_every == 0:
+            print('Step:', (i+1), 'Loss: {:.4f}'.format(loss.item()))
 
     #save every n epochs except the first
     if epoch % config['save_every'] == 0:
