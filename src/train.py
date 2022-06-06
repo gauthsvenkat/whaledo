@@ -1,4 +1,5 @@
 from pytorch_metric_learning import losses, miners
+from config import get_config
 from dataloader import WhaleDoDataset
 from models import WhaleDoModel
 from torch.utils.data import DataLoader
@@ -9,39 +10,7 @@ import time
 
 from utils import *
 
-config = {
-    'csv_name': 'metadata.csv',
-    'root_dir': 'data/',
-
-    'dataset' : {
-        'channels' : 4,
-        'height': None,
-        'width': None,
-        'mean': None,
-        'std': None,
-    },
-
-    'backbone' : {
-        'model': 'resnet18',
-        'rep_dim': 512,
-        'pretrained': True,
-    },
-
-    'projector' : {
-        'hidden_dim': 1024,
-        'output_dim': 256
-    },
-
-    'batch_size': 32,
-    'device': 'cuda' if torch.cuda.is_available() else 'cpu',
-    'num_epochs': 10,
-    'margin': 0.4,
-    'save_every_n_epochs': 5,
-    'print_every_n_steps' : 10,
-    'lr': 0.001,
-    'model_save_dir': 'models/',
-    'model_save_name': 'whaledo_model_{}.pth',
-}
+config = get_config()
 
 # load and parse the dataframe and get the label encoder as well
 df, label_encoder = load_csv_and_parse_dataframe(config['csv_name'], root_dir=config['root_dir'], drop_columns=['timestamp', 'encounter_id'])

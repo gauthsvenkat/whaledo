@@ -15,6 +15,9 @@ from utils import *
 import os
 
 config = get_config()
+config['dataset']['height'], config['dataset']['width'] = get_avg_height_width(None)
+ # get the mean and std of the datasets
+config['dataset']['mean'], config['dataset']['std'] = get_mean_and_std_of_dataset(None)
 
 ROOT_DIRECTORY = Path("/code_execution")
 
