@@ -4,7 +4,7 @@ from config import get_config
 
 from loguru import logger
 import pandas as pd
-from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics.pairwise import euclidean_distances
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -12,10 +12,16 @@ from tqdm import tqdm
 
 from dataloader import WhaleDoDataset
 from utils import *
+import os
 
 config = get_config()
 
 ROOT_DIRECTORY = Path("/code_execution")
+
+if not os.path.exists(ROOT_DIRECTORY):
+    logger.info("Not inside container. Setting ROOT_DIRECTORY to workspace directory")
+    ROOT_DIRECTORY = Path("../")
+
 PREDICTION_FILE = ROOT_DIRECTORY / "submission" / "submission.csv"
 DATA_DIRECTORY = ROOT_DIRECTORY / config['root_dir']
 
@@ -70,7 +76,7 @@ for row in query_scenarios.itertuples():
         _db_embeddings = db_embeddings.drop(qry.query_image_id, errors='ignore')
 
         # compute cosine similarities and get top 20
-        sims = cosine_similarity(qry_embedding, _db_embeddings)[0]
+        sims = euclidean_distances(qry_embedding, _db_embeddings)[0]
         top20 = pd.Series(sims, index=_db_embeddings.index).sort_values(0, ascending=False).head(20)
 
         # append result
