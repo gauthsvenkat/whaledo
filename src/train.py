@@ -36,7 +36,8 @@ config = {
     'device': 'cuda' if torch.cuda.is_available() else 'cpu',
     'num_epochs': 10,
     'margin': 0.4,
-    'save_every': 5,
+    'save_every_n_epochs': 5,
+    'print_every_n_steps' : 10,
     'lr': 0.001,
     'model_save_dir': 'models/',
     'model_save_name': 'whaledo_model_{}.pth',
@@ -75,8 +76,7 @@ model.to(device)
 os.makedirs(config['model_save_dir'], exist_ok=True)
 
 
-print_every = 10
-since = time.time()
+start = time.time()
 
 for epoch in range(config['num_epochs']):
     for i, batch in enumerate(train_loader):
@@ -101,11 +101,11 @@ for epoch in range(config['num_epochs']):
         optimizer.step()
 
         #print loss
-        if (i+1) % print_every == 0:
+        if (i+1) % config['print_every_n_steps'] == 0:
             print('Step:', (i+1), 'Loss: {:.4f}'.format(loss.item()))
 
     #save every n epochs except the first
-    if epoch % config['save_every'] == 0:
+    if epoch % config['save_every_n_epochs'] == 0:
         print('Saving model...')
         torch.save(model, os.path.join(config['model_save_dir'], config['model_save_name'].format(epoch)))
 
@@ -115,5 +115,5 @@ print('Saving model...')
 torch.save(model, os.path.join(config['model_save_dir'], config['model_save_name'].format(epoch)))
 
 
-time_elapsed = time.time() - since
+time_elapsed = time.time() - start
 print(f'Training complete in {time_elapsed // 60:.0f}m {time_elapsed % 60:.0f}s')
