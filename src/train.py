@@ -75,7 +75,7 @@ model.to(device)
 # create directories if they don't exist
 os.makedirs(config['model_save_dir'], exist_ok=True)
 
-
+print("Training started.s")
 start = time.time()
 
 for epoch in range(config['num_epochs']):
