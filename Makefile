@@ -89,7 +89,7 @@ endif
 	cd submission_quickstart; zip -r ../submission/submission.zip ./*
 
 ## Creates a submission/submission.zip file from the source code in submission_benchmark
-pack-benchmark:
+pack-benchmark: clean
 # Don't overwrite so no work is lost accidentally
 ifneq (,$(wildcard ./submission/submission.zip))
 	$(error You already have a submission/submission.zip file. Rename or remove that file (e.g., rm submission/submission.zip).)
@@ -97,7 +97,7 @@ endif
 	cd benchmark_src; zip -r ../submission/submission.zip ./*
 
 ## Creates a submission/submission.zip file from the source code in src
-pack-submission:
+pack-submission: clean
 # Don't overwrite so no work is lost accidentally
 ifneq (,$(wildcard ./submission/submission.zip))
 	$(error You already have a submission/submission.zip file. Rename or remove that file (e.g., rm submission/submission.zip).)
