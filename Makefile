@@ -143,6 +143,21 @@ train:
 		${SUBMISSION_IMAGE}	\
 		bash -c "conda run --no-capture-output -n condaenv python src/train.py"
 
+enter:
+	docker run \
+		${TTY_ARGS} \
+		${GPU_ARGS} \
+		${NETWORK_ARGS} \
+		--mount type=bind,source="$(shell pwd)"/src,target=/code_execution/src,readonly \
+		--mount type=bind,source="$(shell pwd)"/data,target=/code_execution/data,readonly \
+		--mount type=bind,source="$(shell pwd)"/models,target=/code_execution/models \
+		--shm-size 8g \
+		--name ${CONTAINER_NAME} \
+		--entrypoint="" \
+		--rm \
+		${SUBMISSION_IMAGE}	\
+		bash
+
 ## Delete temporary Python cache and bytecode files
 clean:
 	find . -type f -name "*.py[co]" -delete
