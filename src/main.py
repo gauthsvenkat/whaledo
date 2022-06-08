@@ -32,7 +32,7 @@ DATA_DIRECTORY = ROOT_DIRECTORY / config['root_dir']
 logger.info("Starting main script")
 # load test set data and pretrained model
 query_scenarios = pd.read_csv(DATA_DIRECTORY / "query_scenarios.csv", index_col="scenario_id")
-metadata, _ = load_csv_and_parse_dataframe(ROOT_DIRECTORY / config['csv_path'], root_dir=DATA_DIRECTORY)
+metadata, _ = load_csv_and_parse_dataframe(DATA_DIRECTORY / config['csv_name'], root_dir=DATA_DIRECTORY)
 logger.info("Loading pre-trained model")
 
 model = torch.load("model.pth", map_location=config['device']).to(config['device'])
@@ -57,7 +57,7 @@ model.eval()
 logger.info("Precomputing embeddings")
 for batch in tqdm(dataloader, total=len(dataloader)):
     batch_embeddings = model(batch['image'].to(config['device']))
-    batch_embeddings_df = pd.DataFrame(batch_embeddings.detach().numpy(), index=batch["image_id"])
+    batch_embeddings_df = pd.DataFrame(batch_embeddings.detach().cpu().numpy(), index=batch["image_id"])
     embeddings.append(batch_embeddings_df)
 
 embeddings = pd.concat(embeddings)
