@@ -6,7 +6,7 @@ import numpy as np
 
 import cv2
 
-import tensorflow as tf
+import tensorflow as tf; tf.config.set_visible_devices([], 'GPU') #TF doesn't need any GPU. Else it hogs up the memory for PyTorch
 
 class WhaleDoDataset(torch.utils.data.Dataset):
     def __init__(self, df, config, mode='train'):
