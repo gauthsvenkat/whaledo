@@ -29,7 +29,7 @@ config = {
 
     'projector' : {
         'hidden_dim': 1024,
-        'output_dim': 2
+        'output_dim': 256
     },
 
     'batch_size': 32,
