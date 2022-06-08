@@ -7,6 +7,7 @@ import torch
 from sklearn.model_selection import StratifiedKFold, train_test_split
 import os
 import time
+from tqdm import tqdm
 
 from utils import *
 
@@ -44,11 +45,10 @@ model.to(device)
 # create directories if they don't exist
 os.makedirs(config['model_save_dir'], exist_ok=True)
 
-print("Training started.s")
 start = time.time()
 
-for epoch in range(config['num_epochs']):
-    for i, batch in enumerate(train_loader):
+for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
+    for i, batch in tqdm(enumerate(train_loader), desc="Batches", position=1, leave=False):
 
         #move tensors to device (gpu or cpu)
         x_batch, y_batch = batch['image'].to(config['device']), batch['label'].to(config['device'])
@@ -69,11 +69,7 @@ for epoch in range(config['num_epochs']):
         #update weights
         optimizer.step()
 
-        #print loss
-        if (i+1) % config['print_every_n_steps'] == 0:
-            print('Step:', (i+1), 'Loss: {:.4f}'.format(loss.item()))
-
-    #save every n epochs except the first
+    #save every n epochs
     if epoch % config['save_every_n_epochs'] == 0:
         print('Saving model...')
         torch.save(model, os.path.join(config['model_save_dir'], config['model_save_name'].format(epoch)))
