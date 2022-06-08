@@ -47,6 +47,8 @@ endif
 # Give write access to the submission folder to everyone so Docker user can write when mounted
 _submission_write_perms:
 	chmod -R 0777 submission/
+_models_write_perms:
+	chmod -R 0777 models/
 
 # ================================================================================================
 # Commands for building the container if you are changing the requirements
@@ -128,7 +130,7 @@ endif
 		--rm \
 		${SUBMISSION_IMAGE}
 
-train: 
+train: _models_write_perms
 	docker run \
 		${TTY_ARGS} \
 		${GPU_ARGS} \
@@ -143,7 +145,7 @@ train:
 		${SUBMISSION_IMAGE}	\
 		bash -c "conda run --no-capture-output -n condaenv python src/train.py"
 
-enter:
+enter: _models_write_perms
 	docker run \
 		${TTY_ARGS} \
 		${GPU_ARGS} \
