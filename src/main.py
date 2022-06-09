@@ -80,7 +80,7 @@ for row in query_scenarios.itertuples():
         # compute euclidean distance between all images
         distances = euclidean_distances(qry_embedding, _db_embeddings)[0]
         # Turn distances into similarity scores
-        sims = map(lambda d: 1/1(1+d), distances)
+        sims = map(lambda d: 1/(1+d), distances)
         # Select top 3 pairs
         top3 = pd.Series(sims, index=_db_embeddings.index).sort_values(0, ascending=False).head(3)
 
