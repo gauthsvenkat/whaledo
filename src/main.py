@@ -16,7 +16,6 @@ import os
 
 config = get_config()
 config['dataset']['height'], config['dataset']['width'] = get_avg_height_width(None)
- # get the mean and std of the datasets
 config['dataset']['mean'], config['dataset']['std'] = get_mean_and_std_of_dataset(None)
 
 ROOT_DIRECTORY = Path("/code_execution")
@@ -78,13 +77,16 @@ for row in query_scenarios.itertuples():
         qry_embedding = embeddings.loc[[qry.query_image_id]]
         _db_embeddings = db_embeddings.drop(qry.query_image_id, errors='ignore')
 
-        # compute cosine similarities and get top 20
-        sims = euclidean_distances(qry_embedding, _db_embeddings)[0]
-        top20 = pd.Series(sims, index=_db_embeddings.index).sort_values(0, ascending=False).head(20)
+        # compute euclidean distance between all images
+        distances = euclidean_distances(qry_embedding, _db_embeddings)[0]
+        # Turn distances into similarity scores
+        sims = map(lambda d: 1/1(1+d), distances)
+        # Select top 3 pairs
+        top3 = pd.Series(sims, index=_db_embeddings.index).sort_values(0, ascending=False).head(3)
 
         # append result
         qry_result = pd.DataFrame(
-            {"query_id": qry.query_id, "database_image_id": top20.index, "score": top20.values}
+            {"query_id": qry.query_id, "database_image_id": top3.index, "score": top3.values}
         )
         results.append(qry_result)
 
