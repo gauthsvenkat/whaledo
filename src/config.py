@@ -3,18 +3,20 @@ import string
 from datetime import datetime
 
 
-def generate_id():
-    now = datetime.now()
-    id = now.strftime("%m%d-%H%M")
+
+def generate_id(timestamp):
+    id = timestamp.strftime("%m%d-%H%M")
     return id
 
 # generate id and register it in config, gets executed once per run
-id = generate_id()
+timestamp = datetime.now()
+id = generate_id(timestamp)
 
 
 def get_config():
     return {
         'id': id,
+        'timestamp': timestamp,
         'csv_name': 'metadata.csv',
         'root_dir': 'data/',
         'model_save_dir': 'models/' + id + '/',
@@ -41,7 +43,7 @@ def get_config():
         'train_batch_size': 64,
         'main_batch_size': 32, # can't seem to handle larger than 32
         'device': 'cuda' if torch.cuda.is_available() else 'cpu',
-        'num_epochs': 0,
+        'num_epochs': 20,
         'margin': 0.1, # default is 0.05, increase to prevent underfitting, decrease to prevent overfitting
         'save_every_n_epochs': 5,
         'lr': 0.01,
