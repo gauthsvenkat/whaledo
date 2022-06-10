@@ -29,8 +29,8 @@ train_df, test_df = train_test_split(df, test_size=0.2, random_state=42, shuffle
 train_data, test_data = WhaleDoDataset(train_df, config, mode='train'), WhaleDoDataset(test_df, config, mode='test')
 
 # create dataloaders
-train_loader = DataLoader(train_data, config['batch_size'], shuffle=True)
-test_loader = DataLoader(test_data, config['batch_size'], shuffle=False)
+train_loader = DataLoader(train_data, config['train_batch_size'], shuffle=True)
+test_loader = DataLoader(test_data, config['train_batch_size'], shuffle=False)
 
 # init loss function and a miner. The miner samples for training samples
 loss_func = losses.TripletMarginLoss(margin=config['margin'])
