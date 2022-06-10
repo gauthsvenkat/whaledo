@@ -138,6 +138,7 @@ train: _models_write_perms
 		--mount type=bind,source="$(shell pwd)"/src,target=/code_execution/src,readonly \
 		--mount type=bind,source="$(shell pwd)"/data,target=/code_execution/data,readonly \
 		--mount type=bind,source="$(shell pwd)"/models,target=/code_execution/models \
+		--mount type=bind,source="$(shell pwd)"/logs,target=/code_execution/logs \
 		--shm-size 8g \
 		--name ${CONTAINER_NAME} \
 		--entrypoint="" \

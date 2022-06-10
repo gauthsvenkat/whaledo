@@ -1,3 +1,4 @@
+from output import plot_losses, save_model
 from pytorch_metric_learning import losses, miners
 from config import get_config
 from dataloader import WhaleDoDataset
@@ -11,6 +12,7 @@ from tqdm import tqdm
 
 from utils import *
 
+# load config file
 config = get_config()
 
 # load and parse the dataframe and get the label encoder as well
@@ -47,13 +49,15 @@ os.makedirs(config['model_save_dir'], exist_ok=True)
 
 start = time.time()
 
+losses = []
+
 for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
     for i, batch in tqdm(enumerate(train_loader), desc="Batches", position=1, leave=False):
 
         #move tensors to device (gpu or cpu)
         x_batch, y_batch = batch['image'].to(config['device']), batch['label'].to(config['device'])
 
-        #zero the parameter gradients
+        #set the gradients to zero
         optimizer.zero_grad()
 
         #compute embeddings
@@ -63,6 +67,7 @@ for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
         mined_pairs = miner(embeddings, y_batch)
         #compute loss
         loss = loss_func(embeddings, y_batch, mined_pairs)
+        losses.append(loss)
 
         #calculate gradients
         loss.backward()
@@ -71,13 +76,13 @@ for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
 
     #save every n epochs
     if epoch % config['save_every_n_epochs'] == 0:
-        print('Saving model...')
-        torch.save(model, os.path.join(config['model_save_dir'], config['model_save_name'].format(epoch)))
+        save_model(model, epoch)
 
     print('Epoch: {}/{}'.format(epoch+1, config['num_epochs']), 'Loss: {:.4f}'.format(loss.item()))
 
-print('Saving model...')
-torch.save(model, os.path.join(config['model_save_dir'], config['model_save_name'].format(epoch)))
+# Plot losses and save last model
+plot_losses(losses)
+save_model(model, epoch)
 
 
 time_elapsed = time.time() - start
