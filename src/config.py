@@ -41,8 +41,8 @@ def get_config():
         'train_batch_size': 64,
         'main_batch_size': 32, # can't seem to handle larger than 32
         'device': 'cuda' if torch.cuda.is_available() else 'cpu',
-        'num_epochs': 10,
-        'margin': 0.5, # default is 0.05, increase to prevent underfitting, decrease to prevent overfitting
+        'num_epochs': 0,
+        'margin': 0.1, # default is 0.05, increase to prevent underfitting, decrease to prevent overfitting
         'save_every_n_epochs': 5,
-        'lr': 0.001,
+        'lr': 0.01,
     }

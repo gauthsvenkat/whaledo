@@ -1,4 +1,4 @@
-from output import plot_losses, save_model
+from output import save_losses, save_model, save_config
 from pytorch_metric_learning import losses, miners
 from config import get_config
 from dataloader import WhaleDoDataset
@@ -81,8 +81,9 @@ for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
     print('Epoch: {}/{}'.format(epoch+1, config['num_epochs']), 'Loss: {:.4f}'.format(loss.item()))
 
 # Plot losses and save last model
-plot_losses(losses)
-save_model(model, epoch)
+save_config()
+save_losses(losses)
+save_model(model, "final")
 
 
 time_elapsed = time.time() - start
