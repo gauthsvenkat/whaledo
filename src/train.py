@@ -34,7 +34,7 @@ test_loader = DataLoader(test_data, config['batch_size'], shuffle=False)
 
 # init loss function and a miner. The miner samples for training samples
 loss_func = losses.TripletMarginLoss(margin=config['margin'])
-miner = miners.TripletMarginMiner(margin=config['margin'])
+miner = miners.TripletMarginMiner(margin=config['margin'], type_of_triplets='hard')
 
 
 device = config['device']
@@ -49,7 +49,7 @@ os.makedirs(config['model_save_dir'], exist_ok=True)
 
 start = time.time()
 
-losses = []
+losses_over_epoch = []
 
 for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
     for i, batch in tqdm(enumerate(train_loader), desc="Batches", position=1, leave=False):
@@ -67,12 +67,13 @@ for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
         mined_pairs = miner(embeddings, y_batch)
         #compute loss
         loss = loss_func(embeddings, y_batch, mined_pairs)
-        losses.append(loss)
 
         #calculate gradients
         loss.backward()
         #update weights
         optimizer.step()
+
+    losses_over_epoch.append(loss)
 
     #save every n epochs
     if epoch % config['save_every_n_epochs'] == 0:
@@ -81,7 +82,7 @@ for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
     print('Epoch: {}/{}'.format(epoch+1, config['num_epochs']), 'Loss: {:.4f}'.format(loss.item()))
 
 # Plot losses and save last model
-plot_losses(losses)
+plot_losses(losses_over_epoch)
 save_model(model, epoch)
 
 

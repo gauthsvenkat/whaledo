@@ -1,5 +1,7 @@
 from distutils.command.config import config
 from pathlib import Path
+
+from sklearn import preprocessing
 from config import get_config
 
 from loguru import logger
@@ -57,7 +59,8 @@ model.eval()
 logger.info("Precomputing embeddings")
 for batch in tqdm(dataloader, total=len(dataloader)):
     batch_embeddings = model(batch['image'].to(config['device']))
-    batch_embeddings_df = pd.DataFrame(batch_embeddings.detach().cpu().numpy(), index=batch["image_id"])
+    batch_embeddings_normed = preprocessing.normalize(batch_embeddings.detach().cpu().numpy())
+    batch_embeddings_df = pd.DataFrame(batch_embeddings_normed, index=batch["image_id"])
     embeddings.append(batch_embeddings_df)
 
 embeddings = pd.concat(embeddings)
@@ -82,12 +85,12 @@ for row in query_scenarios.itertuples():
         distances = euclidean_distances(qry_embedding, _db_embeddings)[0]
         # Turn distances into similarity scores
         sims = map(lambda d: 1/(1+d), distances)
-        # Select top 3 pairs
-        top3 = pd.Series(sims, index=_db_embeddings.index).sort_values(0, ascending=False).head(3)
+        # Select top 20 pairs
+        top20 = pd.Series(sims, index=_db_embeddings.index).sort_values(0, ascending=False).head(20)
 
         # append result
         qry_result = pd.DataFrame(
-            {"query_id": qry.query_id, "database_image_id": top3.index, "score": top3.values}
+            {"query_id": qry.query_id, "database_image_id": top20.index, "score": top20.values}
         )
         results.append(qry_result)
 
