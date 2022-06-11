@@ -9,13 +9,17 @@ config = get_config()
 
 def save_losses(losses):
     print("Plotting losses")
-    # Plot loss and accuracy
-    # plt.figure(figsize=(14,4))
-    # plt.subplot(1,3,1)
     plt.xlabel('Iterations')
     plt.ylabel('Loss')
     plt.plot(losses)
     plt.savefig(os.path.join(config['model_save_dir'])+"losses.png")
+
+def save_epoch_losses(losses):
+    print("Plotting epoch losses")
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.plot(losses)
+    plt.savefig(os.path.join(config['model_save_dir'])+"epoch_losses.png")
 
 def save_model(model, version):
     print('Saving model', version,'...')
