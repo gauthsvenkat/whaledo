@@ -11,7 +11,6 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-
 from dataloader import WhaleDoDataset
 from utils import *
 import os
