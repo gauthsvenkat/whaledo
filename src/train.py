@@ -1,17 +1,20 @@
-from output import save_epoch_losses, save_losses, save_model, save_config
+from output import save_losses, save_model, save_config
 from pytorch_metric_learning import losses, miners
 from config import get_config
 from dataloader import WhaleDoDataset
 from models import WhaleDoModel
 from torch.utils.data import DataLoader
 import torch
-from sklearn.model_selection import StratifiedKFold, train_test_split
+from sklearn.model_selection import train_test_split
 import os
 import time
 from tqdm import tqdm
 import numpy as np
 
 from utils import *
+
+import warnings
+warnings.filterwarnings("ignore")
 
 # load config file
 config = get_config()
@@ -53,31 +56,36 @@ start = time.time()
 losses_over_epochs = []
 test_losses = []
 
+print('Starting training...\n\n\n')
+
 for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
     batch_loss = []
-    print("Training epoch", epoch)
-    for i, batch in tqdm(enumerate(train_loader), desc="Batches", position=1, leave=False):
+    with tqdm(train_loader, desc="Training", position=1, leave=False, total=len(train_loader)) as t:
+        for i, batch in enumerate(t):
 
-        #move tensors to device (gpu or cpu)
-        x_batch, y_batch = batch['image'].to(config['device']), batch['label'].to(config['device'])
+            #move tensors to device (gpu or cpu)
+            x_batch, y_batch = batch['image'].to(config['device']), batch['label'].to(config['device'])
 
-        #set the gradients to zero
-        optimizer.zero_grad()
+            #set the gradients to zero
+            optimizer.zero_grad()
 
-        #compute embeddings
-        embeddings = model(x_batch)
+            #compute embeddings
+            embeddings = model(x_batch)
 
-        #mine for hard pairs
-        mined_pairs = miner(embeddings, y_batch)
-        #compute loss
-        loss = loss_func(embeddings, y_batch, mined_pairs)
+            #mine for hard pairs
+            mined_pairs = miner(embeddings, y_batch)
+            #compute loss
+            loss = loss_func(embeddings, y_batch, mined_pairs)
 
-        #calculate gradients
-        loss.backward()
-        #update weights
-        optimizer.step()
+            #calculate gradients
+            loss.backward()
+            #update weights
+            optimizer.step()
 
-        batch_loss.append(loss.item())
+            batch_loss.append(loss.item())
+
+            t.set_description("Loss: {:.4f}".format(loss.item()))
+            t.update()
 
     losses_over_epochs.append(batch_loss)
 

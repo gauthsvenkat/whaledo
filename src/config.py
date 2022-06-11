@@ -1,6 +1,4 @@
-from time import time
 import torch
-import string
 from datetime import datetime
 
 
@@ -37,7 +35,7 @@ def get_config():
             'output_dim': 256
         },
 
-        'train_batch_size': 128,
+        'train_batch_size': 64,
         'main_batch_size': 32, # can't seem to handle larger than 32
         'device': 'cuda' if torch.cuda.is_available() else 'cpu',
         'num_epochs': 50,
