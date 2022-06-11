@@ -41,5 +41,5 @@ def get_config():
         'num_epochs': 50,
         'margin': 0.7, # default is 0.05, increase to prevent underfitting, decrease to prevent overfitting
         'save_every_n_epochs': 5,
-        'lr': 0.001,
+        'lr': 0.005,
     }
