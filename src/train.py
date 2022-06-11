@@ -1,4 +1,4 @@
-from output import save_losses, save_model, save_config
+from output import save_epoch_losses, save_losses, save_model, save_config
 from pytorch_metric_learning import losses, miners
 from config import get_config
 from dataloader import WhaleDoDataset
@@ -23,7 +23,7 @@ config['dataset']['height'], config['dataset']['width'] = get_avg_height_width(d
 config['dataset']['mean'], config['dataset']['std'] = get_mean_and_std_of_dataset(df)
 
 # split the dataframe into train and test
-train_df, test_df = train_test_split(df, test_size=0.2, random_state=42, shuffle=True)#, stratify=df['whale_id']) #can't stratify if least populated class has only one member
+train_df, test_df = train_test_split(df, test_size=0.1, random_state=42, shuffle=True)#, stratify=df['whale_id']) #can't stratify if least populated class has only one member
 
 # create the dataset objects
 train_data, test_data = WhaleDoDataset(train_df, config, mode='train'), WhaleDoDataset(test_df, config, mode='test')
@@ -50,8 +50,15 @@ os.makedirs(config['model_save_dir'], exist_ok=True)
 start = time.time()
 
 losses = []
+test_losses = []
 
 for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
+
+    # TRAIN LOOP   
+    print("Training epoch", epoch)
+    # reshuffle train_loader every epoch
+    train_loader = DataLoader(train_data, config['train_batch_size'], shuffle=True)
+    
     for i, batch in tqdm(enumerate(train_loader), desc="Batches", position=1, leave=False):
 
         #move tensors to device (gpu or cpu)
@@ -78,11 +85,35 @@ for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
     if epoch % config['save_every_n_epochs'] == 0:
         save_model(model, epoch)
 
-    print('Epoch: {}/{}'.format(epoch+1, config['num_epochs']), 'Loss: {:.4f}'.format(loss.item()))
+
+    # # VALIDATION LOOP   
+    # print("Testing epoch performance...")
+    # test_loss = 0
+
+    # for i, batch in tqdm(enumerate(test_loader), desc="Batches", position=1, leave=False):
+    #     #move tensors to device (gpu or cpu)
+    #     x_batch, y_batch = batch['image'].to(config['device']), batch['label'].to(config['device'])
+    #     #compute embeddings
+    #     embeddings = model(x_batch)
+    #     #compute loss  
+    #     loss = loss_func(embeddings, y_batch)
+    #     # Keep track of total loss over test set
+    #     test_loss += loss
+
+    # test_loss /= len(test_loader.dataset)
+    # test_losses.append(test_loss)
+    # print('\nTest set: Average loss: {:.4f}'.format(test_loss))
+
+    # test_acc = 100. * total_correct / len(test_loader.dataset)
+    # print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+    #     test_loss, total_correct, len(test_loader.dataset), test_acc))
+    
+    # print('Epoch: {}/{}'.format(epoch+1, config['num_epochs']), 'Loss: {:.4f}'.format(test_loss))
 
 # Plot losses and save last model
 save_config()
 save_losses(losses)
+# save_epoch_losses(test_losses)
 save_model(model, "final")
 
 
