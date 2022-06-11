@@ -56,7 +56,7 @@ start = time.time()
 losses_over_epochs = []
 test_losses = []
 
-print('Starting training...\n\n\n')
+print('Starting training...')
 
 for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
     batch_loss = []
