@@ -29,7 +29,6 @@ if not os.path.exists(ROOT_DIRECTORY):
 PREDICTION_FILE = ROOT_DIRECTORY / "submission" / "submission.csv"
 DATA_DIRECTORY = ROOT_DIRECTORY / config['root_dir']
 
-
 logger.info("Starting main script")
 # load test set data and pretrained model
 query_scenarios = pd.read_csv(DATA_DIRECTORY / "query_scenarios.csv", index_col="scenario_id")
@@ -52,7 +51,7 @@ metadata = metadata.loc[scenario_imgs]
 
 # instantiate dataset/loader and generate embeddings for all images
 dataset = WhaleDoDataset(metadata, config, mode='runtime')
-dataloader = DataLoader(dataset, config['batch_size'], shuffle=False)
+dataloader = DataLoader(dataset, config['main_batch_size'], shuffle=False)
 embeddings = []
 model.eval()
 
