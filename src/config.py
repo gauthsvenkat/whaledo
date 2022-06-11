@@ -1,16 +1,13 @@
+from time import time
 import torch
 import string
 from datetime import datetime
 
 
-
-def generate_id(timestamp):
-    id = timestamp.strftime("%m%d-%H%M")
-    return id
-
 # generate id and register it in config, gets executed once per run
-timestamp = datetime.now()
-id = generate_id(timestamp)
+now = datetime.now()
+id = now.strftime("%m%d-%H%M")
+timestamp = now.strftime("%d/%m/%y %H:%M")
 
 
 def get_config():
@@ -43,8 +40,8 @@ def get_config():
         'train_batch_size': 64,
         'main_batch_size': 32, # can't seem to handle larger than 32
         'device': 'cuda' if torch.cuda.is_available() else 'cpu',
-        'num_epochs': 20,
-        'margin': 0.1, # default is 0.05, increase to prevent underfitting, decrease to prevent overfitting
+        'num_epochs': 50,
+        'margin': 0.2, # default is 0.05, increase to prevent underfitting, decrease to prevent overfitting
         'save_every_n_epochs': 5,
-        'lr': 0.01,
+        'lr': 0.001,
     }
