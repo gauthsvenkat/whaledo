@@ -9,6 +9,7 @@ from sklearn.model_selection import StratifiedKFold, train_test_split
 import os
 import time
 from tqdm import tqdm
+import numpy as np
 
 from utils import *
 
@@ -49,9 +50,10 @@ os.makedirs(config['model_save_dir'], exist_ok=True)
 
 start = time.time()
 
-losses_over_epoch = []
+losses_over_epochs = []
 
 for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
+    batch_loss = []
     for i, batch in tqdm(enumerate(train_loader), desc="Batches", position=1, leave=False):
 
         #move tensors to device (gpu or cpu)
@@ -73,7 +75,9 @@ for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
         #update weights
         optimizer.step()
 
-    losses_over_epoch.append(loss)
+        batch_loss.append(loss.item())
+
+    losses_over_epochs.append(batch_loss)
 
     #save every n epochs
     if epoch % config['save_every_n_epochs'] == 0:
@@ -81,8 +85,8 @@ for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
 
     print('Epoch: {}/{}'.format(epoch+1, config['num_epochs']), 'Loss: {:.4f}'.format(loss.item()))
 
-# Plot losses and save last model
-plot_losses(losses_over_epoch)
+# Plot epoch average loss from batch losses and save last model
+plot_losses(list(map(lambda x: np.mean(x), losses_over_epochs)))
 save_model(model, epoch)
 
 
