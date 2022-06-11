@@ -57,8 +57,6 @@ for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
     # TRAIN LOOP   
     print("Training epoch", epoch)
     # reshuffle train_loader every epoch
-    train_loader = DataLoader(train_data, config['train_batch_size'], shuffle=True)
-    
     for i, batch in tqdm(enumerate(train_loader), desc="Batches", position=1, leave=False):
 
         #move tensors to device (gpu or cpu)
