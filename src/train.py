@@ -96,9 +96,9 @@ for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
             t.update()
     
     losses_over_epochs.append(batch_loss)
+    save_losses(list(map(lambda x: np.mean(x), losses_over_epochs)), "losses.png", "Epochs")
 
     mean_batch_loss = np.mean(batch_loss)
-
     scheduler.step(mean_batch_loss)
 
     if np.isclose(mean_batch_loss, config['margin'], rtol=1e-3):
@@ -106,10 +106,9 @@ for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
         miner = miners.TripletMarginMiner(margin=config['margin'], type_of_triplets='all')
 
     #save every n epochs
-    # save model and plot losses every n epochs
+    # save model every n epochs
     if epoch % config['save_every_n_epochs'] == 0:
         save_model(model, epoch)
-        save_losses(list(map(lambda x: np.mean(x), losses_over_epochs)), "losses.png", "Epochs")
 
 
     # # VALIDATION LOOP   
