@@ -64,6 +64,7 @@ losses_over_epochs = []
 test_losses = []
 
 print('Starting training...')
+save_config()
 
 for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
     batch_loss = []
@@ -105,8 +106,10 @@ for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
         miner = miners.TripletMarginMiner(margin=config['margin'], type_of_triplets='all')
 
     #save every n epochs
+    # save model and plot losses every n epochs
     if epoch % config['save_every_n_epochs'] == 0:
         save_model(model, epoch)
+        save_losses(list(map(lambda x: np.mean(x), losses_over_epochs)), "losses.png", "Epochs")
 
 
     # # VALIDATION LOOP   
@@ -133,10 +136,7 @@ for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
     
     # print('Epoch: {}/{}'.format(epoch+1, config['num_epochs']), 'Loss: {:.4f}'.format(test_loss))
 
-# Plot losses and save last model
-save_config()
-save_losses(list(map(lambda x: np.mean(x), losses_over_epochs)))
-# save_epoch_losses(test_losses)
+# Save last model
 save_model(model, "final")
 
 
