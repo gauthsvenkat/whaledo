@@ -1,3 +1,4 @@
+from sched import scheduler
 from output import save_losses, save_model, save_config
 from pytorch_metric_learning import losses, miners
 from config import get_config
@@ -45,6 +46,12 @@ device = config['device']
 # init model and optimizer
 model = WhaleDoModel(config)
 optimizer = torch.optim.Adam(model.parameters(), lr=config['lr'])
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
+                                                       mode='min', 
+                                                       factor=0.5, 
+                                                       patience=2, 
+                                                       min_lr=0.0001,
+                                                       verbose=True)
 model.to(device)
 
 
@@ -86,8 +93,16 @@ for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
 
             t.set_description("Loss: {:.4f}".format(loss.item()))
             t.update()
-
+    
     losses_over_epochs.append(batch_loss)
+
+    mean_batch_loss = np.mean(batch_loss)
+
+    scheduler.step(mean_batch_loss)
+
+    if np.isclose(mean_batch_loss, config['margin'], rtol=1e-3):
+        # if the loss is close to the margin, we can start sampling all the triplets
+        miner = miners.TripletMarginMiner(margin=config['margin'], type_of_triplets='all')
 
     #save every n epochs
     if epoch % config['save_every_n_epochs'] == 0:
