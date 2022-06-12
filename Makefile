@@ -173,7 +173,7 @@ jupyter: _models_write_perms
 		--entrypoint="" \
 		--rm \
 		${SUBMISSION_IMAGE}	\
-		bash -c "pip install jupyter && jupyter notebook"
+		bash -c "conda install -n condaenv -y jupyter && conda run --no-capture-output -n condaenv jupyter notebook"
 
 ## Delete temporary Python cache and bytecode files
 clean:
