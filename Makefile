@@ -126,7 +126,6 @@ endif
 		--mount type=bind,source="$(shell pwd)"/data,target=/code_execution/data,readonly \
 		--mount type=bind,source="$(shell pwd)"/submission,target=/code_execution/submission \
 		--shm-size 8g \
-		--name ${CONTAINER_NAME} \
 		--rm \
 		${SUBMISSION_IMAGE}
 
@@ -155,11 +154,26 @@ enter: _models_write_perms
 		--mount type=bind,source="$(shell pwd)"/data,target=/code_execution/data,readonly \
 		--mount type=bind,source="$(shell pwd)"/models,target=/code_execution/models \
 		--shm-size 8g \
-		--name ${CONTAINER_NAME} \
 		--entrypoint="" \
 		--rm \
 		${SUBMISSION_IMAGE}	\
 		bash
+
+jupyter: _models_write_perms
+	docker run \
+		${TTY_ARGS} \
+		${GPU_ARGS} \
+		--network host \
+		--ipc host \
+		-p 8888:8888 \
+		--mount type=bind,source="$(shell pwd)"/src,target=/code_execution/src,readonly \
+		--mount type=bind,source="$(shell pwd)"/data,target=/code_execution/data,readonly \
+		--mount type=bind,source="$(shell pwd)"/models,target=/code_execution/models \
+		--shm-size 8g \
+		--entrypoint="" \
+		--rm \
+		${SUBMISSION_IMAGE}	\
+		bash -c "conda install -n condaenv -y jupyter && conda run --no-capture-output -n condaenv jupyter notebook"
 
 ## Delete temporary Python cache and bytecode files
 clean:
