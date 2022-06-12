@@ -159,6 +159,22 @@ enter: _models_write_perms
 		${SUBMISSION_IMAGE}	\
 		bash
 
+jupyter: _models_write_perms
+	docker run \
+		${TTY_ARGS} \
+		${GPU_ARGS} \
+		--network host \
+		--ipc host \
+		-p 8888:8888 \
+		--mount type=bind,source="$(shell pwd)"/src,target=/code_execution/src,readonly \
+		--mount type=bind,source="$(shell pwd)"/data,target=/code_execution/data,readonly \
+		--mount type=bind,source="$(shell pwd)"/models,target=/code_execution/models \
+		--shm-size 8g \
+		--entrypoint="" \
+		--rm \
+		${SUBMISSION_IMAGE}	\
+		bash -c "pip install jupyter && jupyter notebook"
+
 ## Delete temporary Python cache and bytecode files
 clean:
 	find . -type f -name "*.py[co]" -delete
