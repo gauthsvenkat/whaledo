@@ -50,7 +50,7 @@ scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer,
                                                        mode='min', 
                                                        factor=0.5, 
                                                        patience=2, 
-                                                       min_lr=0.0001,
+                                                       min_lr=0.001,
                                                        verbose=True)
 model.to(device)
 
