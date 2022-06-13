@@ -181,6 +181,14 @@ clean:
 	find . -type d -name "__pycache__" -delete
 	rm -f ./submission/*
 
+VERSION = final
+
+test-model:
+	bash -c "sudo cp models/${ID}/model-${VERSION}.pth src/model.pth"
+	bash -c "make clean >/dev/null"
+	bash -c "make pack-submission >/dev/null"
+	bash -c "make test-submission >/dev/null"
+	bash -c "python scoring/score_submission.py submission/submission.csv scoring/example_labels.csv"
 
 #################################################################################
 # Self Documenting Commands                                                     #
