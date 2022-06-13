@@ -101,7 +101,7 @@ for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
     mean_batch_loss = np.mean(batch_loss)
     scheduler.step(mean_batch_loss)
 
-    if np.isclose(mean_batch_loss, config['margin'], rtol=1e-3):
+    if np.allclose(np.array(batch_loss), config['margin'], rtol=1e-3):
         # if the loss is close to the margin, we can start sampling all the triplets
         miner = miners.TripletMarginMiner(margin=config['margin'], type_of_triplets='all')
 
