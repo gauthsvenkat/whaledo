@@ -39,7 +39,7 @@ def get_config():
         'main_batch_size': 32, # can't seem to handle larger than 32
         'device': 'cuda' if torch.cuda.is_available() else 'cpu',
         'num_epochs': 250,
-        'margin': 0.7, # default is 0.05, increase to prevent underfitting, decrease to prevent overfitting
+        'margin': 0.5, # default is 0.05, increase to prevent underfitting, decrease to prevent overfitting
         'save_every_n_epochs': 5,
         'lr': 0.1,
     }

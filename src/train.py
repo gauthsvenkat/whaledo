@@ -76,7 +76,7 @@ for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
 
             #set the gradients to zero
             optimizer.zero_grad()
-
+            
             #compute embeddings
             embeddings = model(x_batch)
 
@@ -92,7 +92,7 @@ for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
 
             batch_loss.append(loss.item())
 
-            t.set_description("Loss: {:.4f}".format(loss.item()))
+            t.set_description("Loss: {:.4f} (with {} pairs)".format(loss.item(), len(mined_pairs[0])))
             t.update()
     
     losses_over_epochs.append(batch_loss)
@@ -103,6 +103,7 @@ for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
 
     if np.allclose(np.array(batch_loss), config['margin'], rtol=1e-3):
         # if the loss is close to the margin, we can start sampling all the triplets
+        print("Set miner to all")
         miner = miners.TripletMarginMiner(margin=config['margin'], type_of_triplets='all')
 
     #save every n epochs
