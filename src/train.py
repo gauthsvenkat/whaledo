@@ -1,3 +1,4 @@
+from sched import scheduler
 from output import save_losses, save_model, save_config
 from pytorch_metric_learning import losses, miners
 from config import get_config
@@ -38,13 +39,18 @@ test_loader = DataLoader(test_data, config['train_batch_size'], shuffle=False)
 
 # init loss function and a miner. The miner samples for training samples
 loss_func = losses.TripletMarginLoss(margin=config['margin'])
-miner = miners.TripletMarginMiner(margin=config['margin'], type_of_triplets='hard')
-
+miner = miners.TripletMarginMiner(margin=config['margin'], type_of_triplets='semihard')
 
 device = config['device']
 # init model and optimizer
 model = WhaleDoModel(config)
 optimizer = torch.optim.Adam(model.parameters(), lr=config['lr'])
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 
+                                                       mode='min', 
+                                                       factor=0.5, 
+                                                       patience=2, 
+                                                       min_lr=0.001,
+                                                       verbose=True)
 model.to(device)
 
 
@@ -57,8 +63,10 @@ losses_over_epochs = []
 test_losses = []
 
 print('Starting training...')
+save_config()
 
 for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
+    model.train()
     batch_loss = []
     with tqdm(train_loader, desc="Training", position=1, leave=False, total=len(train_loader)) as t:
         for i, batch in enumerate(t):
@@ -68,7 +76,7 @@ for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
 
             #set the gradients to zero
             optimizer.zero_grad()
-
+            
             #compute embeddings
             embeddings = model(x_batch)
 
@@ -84,44 +92,45 @@ for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
 
             batch_loss.append(loss.item())
 
-            t.set_description("Loss: {:.4f}".format(loss.item()))
+            t.set_description("Training Loss: {:.4f} (with {} pairs)".format(loss.item(), len(mined_pairs[0])))
             t.update()
-
+    
     losses_over_epochs.append(batch_loss)
 
-    #save every n epochs
+    mean_batch_loss = np.mean(batch_loss)
+    scheduler.step(mean_batch_loss)
+
+    # if the loss is close to the margin, we can start sampling all the triplets
+    if np.allclose(np.array(batch_loss), config['margin'], rtol=1e-3):
+        print("Set miner to hard")
+        miner = miners.TripletMarginMiner(margin=config['margin'], type_of_triplets='hard')
+
+    # VALIDATION LOOP   
+    model.eval()
+    test_loss = 0
+    with torch.no_grad():
+        for i, batch in tqdm(enumerate(test_loader), desc="Validation Loss", position=1, leave=False):
+            #move tensors to device (gpu or cpu)
+            x_batch, y_batch = batch['image'].to(config['device']), batch['label'].to(config['device'])
+            #compute embeddings
+            embeddings = model(x_batch)
+            #compute loss  
+            loss = loss_func(embeddings, y_batch)
+            # Keep track of total loss over test set
+            test_loss += loss.item()
+            #display loss
+            t.set_description("Validation Loss: {:.4f}".format(loss.item()))
+            t.update()
+    test_loss /= len(test_loader.dataset)
+    test_losses.append(test_loss)
+
+    # SAVE MODEL AND LOSESS
     if epoch % config['save_every_n_epochs'] == 0:
         save_model(model, epoch)
+    save_losses(list(map(lambda x: np.mean(x), losses_over_epochs)), test_losses, "losses.png")
+    print('Epoch: {}/{}'.format(epoch+1, config['num_epochs']), 'Validation Loss: {:.4f} Test Loss: {:.4f}'.format(mean_batch_loss, test_loss))
 
-
-    # # VALIDATION LOOP   
-    # print("Testing epoch performance...")
-    # test_loss = 0
-
-    # for i, batch in tqdm(enumerate(test_loader), desc="Batches", position=1, leave=False):
-    #     #move tensors to device (gpu or cpu)
-    #     x_batch, y_batch = batch['image'].to(config['device']), batch['label'].to(config['device'])
-    #     #compute embeddings
-    #     embeddings = model(x_batch)
-    #     #compute loss  
-    #     loss = loss_func(embeddings, y_batch)
-    #     # Keep track of total loss over test set
-    #     test_loss += loss
-
-    # test_loss /= len(test_loader.dataset)
-    # test_losses.append(test_loss)
-    # print('\nTest set: Average loss: {:.4f}'.format(test_loss))
-
-    # test_acc = 100. * total_correct / len(test_loader.dataset)
-    # print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-    #     test_loss, total_correct, len(test_loader.dataset), test_acc))
-    
-    # print('Epoch: {}/{}'.format(epoch+1, config['num_epochs']), 'Loss: {:.4f}'.format(test_loss))
-
-# Plot losses and save last model
-save_config()
-save_losses(list(map(lambda x: np.mean(x), losses_over_epochs)))
-# save_epoch_losses(test_losses)
+# Save last model
 save_model(model, "final")
 
 

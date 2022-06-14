@@ -163,6 +163,8 @@ jupyter: _models_write_perms
 	docker run \
 		${TTY_ARGS} \
 		${GPU_ARGS} \
+		--network host \
+		--ipc host \
 		-p 8888:8888 \
 		--mount type=bind,source="$(shell pwd)"/src,target=/code_execution/src,readonly \
 		--mount type=bind,source="$(shell pwd)"/data,target=/code_execution/data,readonly \
@@ -171,7 +173,7 @@ jupyter: _models_write_perms
 		--entrypoint="" \
 		--rm \
 		${SUBMISSION_IMAGE}	\
-		bash -c "conda install -n condaenv -y jupyter && conda run --no-capture-output -n condaenv jupyter notebook --ip 0.0.0.0  --port 8888 --no-browser --allow-root"
+		bash -c "conda install -n condaenv -y jupyter && conda run --no-capture-output -n condaenv jupyter notebook"
 
 ## Delete temporary Python cache and bytecode files
 clean:
@@ -179,6 +181,14 @@ clean:
 	find . -type d -name "__pycache__" -delete
 	rm -f ./submission/*
 
+VERSION = final
+
+test-model:
+	bash -c "sudo cp models/${ID}/model-${VERSION}.pth src/model.pth"
+	bash -c "make clean >/dev/null"
+	bash -c "make pack-submission >/dev/null"
+	bash -c "make test-submission >/dev/null"
+	bash -c "python scoring/score_submission.py submission/submission.csv scoring/example_labels.csv"
 
 #################################################################################
 # Self Documenting Commands                                                     #
