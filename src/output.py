@@ -6,10 +6,11 @@ from config import get_config
 
 config = get_config()
 
-def save_losses(losses, filename, xlabel):
-    plt.xlabel(xlabel)
+def save_losses(losses, test_losses, filename):
+    plt.xlabel("Epoch")
     plt.ylabel("Loss")
-    plt.plot(losses)
+    plt.plot(losses, label="Training Loss")
+    plt.plot(test_losses, label="Validation Loss")
     plt.savefig(os.path.join(config['model_save_dir'])+filename)
 
 def save_model(model, version):
