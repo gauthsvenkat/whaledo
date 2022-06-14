@@ -163,8 +163,6 @@ jupyter: _models_write_perms
 	docker run \
 		${TTY_ARGS} \
 		${GPU_ARGS} \
-		--network host \
-		--ipc host \
 		-p 8888:8888 \
 		--mount type=bind,source="$(shell pwd)"/src,target=/code_execution/src,readonly \
 		--mount type=bind,source="$(shell pwd)"/data,target=/code_execution/data,readonly \
@@ -173,7 +171,7 @@ jupyter: _models_write_perms
 		--entrypoint="" \
 		--rm \
 		${SUBMISSION_IMAGE}	\
-		bash -c "conda install -n condaenv -y jupyter && conda run --no-capture-output -n condaenv jupyter notebook"
+		bash -c "conda install -n condaenv -y jupyter && conda run --no-capture-output -n condaenv jupyter notebook --ip 0.0.0.0  --port 8888 --no-browser --allow-root"
 
 ## Delete temporary Python cache and bytecode files
 clean:
