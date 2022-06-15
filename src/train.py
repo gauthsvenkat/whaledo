@@ -1,6 +1,6 @@
 from sched import scheduler
 from output import save_losses, save_model, save_config
-from pytorch_metric_learning import losses, miners
+from pytorch_metric_learning import losses, miners, distances
 from config import get_config
 from dataloader import WhaleDoDataset
 from models import WhaleDoModel
@@ -38,8 +38,10 @@ train_loader = DataLoader(train_data, config['train_batch_size'], shuffle=True)
 test_loader = DataLoader(test_data, config['train_batch_size'], shuffle=False)
 
 # init loss function and a miner. The miner samples for training samples
-loss_func = losses.TripletMarginLoss(margin=config['margin'])
+distance = distances.LpDistance(p=config['distance_norm'])
+loss_func = losses.TripletMarginLoss(margin=config['margin'], distance=distance)
 miner = miners.TripletMarginMiner(margin=config['margin'], type_of_triplets='semihard')
+test_miner = miners.TripletMarginMiner(margin=config['margin'], type_of_triplets='semihard')
 
 device = config['device']
 # init model and optimizer
@@ -114,12 +116,14 @@ for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
             x_batch, y_batch = batch['image'].to(config['device']), batch['label'].to(config['device'])
             #compute embeddings
             embeddings = model(x_batch)
+            #mine for all pairs
+            mined_pairs = miner(embeddings, y_batch)
             #compute loss  
-            loss = loss_func(embeddings, y_batch)
+            loss = loss_func(embeddings, y_batch, mined_pairs)
             # Keep track of total loss over test set
             test_loss += loss.item()
             #display loss
-            t.set_description("Validation Loss: {:.4f}".format(loss.item()))
+            t.set_description("Validation Loss: {:.4f} (with {} pairs)".format(loss.item(), len(mined_pairs[0])))
             t.update()
     test_loss /= len(test_loader.dataset)
     test_losses.append(test_loss)
@@ -128,7 +132,7 @@ for epoch in tqdm(range(config['num_epochs']), desc="Epochs", position=0):
     if epoch % config['save_every_n_epochs'] == 0:
         save_model(model, epoch)
     save_losses(list(map(lambda x: np.mean(x), losses_over_epochs)), test_losses, "losses.png")
-    print('Epoch: {}/{}'.format(epoch+1, config['num_epochs']), 'Validation Loss: {:.4f} Test Loss: {:.4f}'.format(mean_batch_loss, test_loss))
+    print('Epoch: {}/{}'.format(epoch+1, config['num_epochs']), 'Training Loss: {:.4f} Validation Loss: {:.4f}'.format(mean_batch_loss, test_loss))
 
 # Save last model
 save_model(model, "final")

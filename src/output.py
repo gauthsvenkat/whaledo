@@ -7,10 +7,12 @@ from config import get_config
 config = get_config()
 
 def save_losses(losses, test_losses, filename):
+    plt.clf()
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
     plt.plot(losses, label="Training Loss")
     plt.plot(test_losses, label="Validation Loss")
+    plt.legend(loc='best')
     plt.savefig(os.path.join(config['model_save_dir'])+filename)
 
 def save_model(model, version):

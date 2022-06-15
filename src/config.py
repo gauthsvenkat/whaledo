@@ -32,14 +32,15 @@ def get_config():
 
         'projector': {
             'hidden_dim': 1024,
-            'output_dim': 256
+            'output_dim': 32, # Output dimensions
         },
 
-        'train_batch_size': 64,
+        'train_batch_size': 64, # should be as big as possible, currently that's 64
         'main_batch_size': 32, # can't seem to handle larger than 32
         'device': 'cuda' if torch.cuda.is_available() else 'cpu',
         'num_epochs': 250,
-        'margin': 0.5, # default is 0.05, increase to prevent underfitting, decrease to prevent overfitting
+        'margin': 0.3, # default is 0.05, increase to prevent underfitting, decrease to prevent overfitting
         'save_every_n_epochs': 5,
         'lr': 0.1,
+        'distance_norm': 0.5 # default (euclidean) is 2, manhattan is 1, ... -> lower norm should be better for high dimensions
     }
