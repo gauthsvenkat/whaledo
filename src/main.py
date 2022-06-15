@@ -26,40 +26,23 @@ if not os.path.exists(ROOT_DIRECTORY):
     ROOT_DIRECTORY = Path("../")
 
 PREDICTION_FILE = ROOT_DIRECTORY / "submission" / "submission.csv"
-DATA_DIRECTORY = ROOT_DIRECTORY / config['root_dir']
-
-def main():
-    logger.info("Starting main script")
-    # load test set data and pretrained model
-    # scenarios_df = pd.read_csv("/code_execution/query_scenarios.csv")
-    # metadata_df = pd.read_csv("/code_execution/metadata.csv")
-
-    scenarios_df = pd.read_csv(DATA_DIRECTORY / "query_scenarios.csv", index_col="scenario_id")
-    metadata, _ = load_csv_and_parse_dataframe(DATA_DIRECTORY / config['csv_name'], root_dir=DATA_DIRECTORY)
-    logger.info("Loading pre-trained model")
-
-    model = torch.load("model.pth", map_location=config['device']).to(config['device'])
-    model.projector = None # remove projector during testing
-
-    # we'll only precompute embeddings for the images in the scenario files (rather than all images), so that the
-    # benchmark example can run quickly when doing local testing. this subsetting step is not necessary for an actual
-    # code submission since all the images in the test environment metadata also belong to a query or database.
-    scenario_imgs = []
-    for row in scenarios_df.itertuples():
-        scenario_imgs.extend(pd.read_csv(DATA_DIRECTORY / row.queries_path).query_image_id.values)
-        scenario_imgs.extend(pd.read_csv(DATA_DIRECTORY / row.database_path).database_image_id.values)
-    scenario_imgs = sorted(set(scenario_imgs))
-    metadata = metadata.loc[scenario_imgs]
+DATA_DIRECTORY = ROOT_DIRECTORY / "data"
 
 
-    # instantiate dataset/loader and generate embeddings for all images
-    dataset = WhaleDoDataset(metadata, config, mode='runtime')
+def setup_dataloader(metadata_df):
+    # Preprocess metadata
+    metadata_df['path'] = metadata_df['path'].map(lambda p: os.path.join(DATA_DIRECTORY, p)) #convert path to full path
+    metadata_df['viewpoint'] = metadata_df['viewpoint'].map({'top': 0, 'left': -1, 'right': 1}) #convert viewpoint to 0, -1, 1
+
+    # Setup dataloader
+    dataset = WhaleDoDataset(metadata_df, config, mode='runtime')
     dataloader = DataLoader(dataset, config['main_batch_size'], shuffle=False)
-    embeddings = []
-    model.eval()
+    return dataloader
 
-    logger.info("Precomputing embeddings")
-    for batch in tqdm(dataloader, total=len(dataloader)):
+def generate_embeddings(model, dataloader):
+    embeddings = []
+
+    for batch in tqdm(dataloader, total=len(dataloader), desc="Precomputing embeddings"):
         batch_embeddings = model(batch['image'].to(config['device']))
         batch_embeddings_normed = preprocessing.normalize(batch_embeddings.detach().cpu().numpy())
         batch_embeddings_df = pd.DataFrame(batch_embeddings_normed, index=batch["image_id"])
@@ -67,38 +50,66 @@ def main():
 
     embeddings = pd.concat(embeddings)
     logger.info(f"Precomputed embeddings for {len(embeddings)} images")
+    return embeddings
 
-    logger.info("Generating image rankings")
-    # process all scenarios
-    results = []
-    for row in scenarios_df.itertuples():
+
+def predict(qry_embedding, db_embeddings):
+    # Compute euclidean distance between all images
+    distances = euclidean_distances(qry_embedding, db_embeddings)[0]
+    # Turn distances into similarity scores
+    sims = map(lambda d: 1/(1+d), distances)
+    # Select top 20 pairs
+    top20 = pd.Series(sims, index=db_embeddings.index).sort_values(0, ascending=False).head(20)
+    result_images, scores = top20.index, top20.values
+
+    return result_images, scores
+
+
+def main():
+    logger.info("Starting main script")
+
+    # Load scenarios and metadata
+    scenarios_df = pd.read_csv(DATA_DIRECTORY / "query_scenarios.csv")
+    metadata_df = pd.read_csv(DATA_DIRECTORY / "metadata.csv", index_col='image_id')
+
+    # Setup dataloader
+    dataloader = setup_dataloader(metadata_df)
+
+    # Load model
+    model = torch.load("model.pth", map_location=config['device']).to(config['device'])
+    model.projector = None # remove projector during testing
+    model.eval()
+
+    # Generate embeddings
+    embeddings = generate_embeddings(model, dataloader)
+
+    # Process all scenarios
+    predictions = []
+    for scenario_row in scenarios_df.itertuples():
+
         # load query df and database images; subset embeddings to this scenario's database
-        qry_df = pd.read_csv(DATA_DIRECTORY / row.queries_path)
-        db_img_ids = pd.read_csv(DATA_DIRECTORY / row.database_path).database_image_id.values
-        db_embeddings = embeddings.loc[db_img_ids]
-
+        queries_df = pd.read_csv(DATA_DIRECTORY / scenario_row.queries_path)
+        database_df = pd.read_csv(DATA_DIRECTORY / scenario_row.database_path)
+        database_image_ids = database_df["database_image_id"].values
+        database_embeddings = embeddings.loc[database_image_ids]
+        
         # predict matches for each query in this scenario
-        for qry in qry_df.itertuples():
+        for query_row in queries_df.itertuples():
+            query_id = query_row.query_id
+            query_image_id = query_row.query_image_id
+
             # get embeddings; drop query from database, if it exists
-            qry_embedding = embeddings.loc[[qry.query_image_id]]
-            _db_embeddings = db_embeddings.drop(qry.query_image_id, errors='ignore')
+            qry_embedding = embeddings.loc[[query_image_id]]
+            _db_embeddings = database_embeddings.drop(query_image_id, errors='ignore')
+            result_images, scores = predict(qry_embedding, _db_embeddings)
 
-            # compute euclidean distance between all images
-            distances = euclidean_distances(qry_embedding, _db_embeddings)[0]
-            # Turn distances into similarity scores
-            sims = map(lambda d: 1/(1+d), distances)
-            # Select top 20 pairs
-            top20 = pd.Series(sims, index=_db_embeddings.index).sort_values(0, ascending=False).head(20)
+            # Append result
+            prediction = pd.DataFrame({"query_id": query_id, "database_image_id": result_images, "score": scores})
+            predictions.append(prediction)
 
-            # append result
-            qry_result = pd.DataFrame(
-                {"query_id": qry.query_id, "database_image_id": top20.index, "score": top20.values}
-            )
-            results.append(qry_result)
+    predictions_df = pd.concat(predictions)
+    predictions_df.to_csv(PREDICTION_FILE, index=False)
 
-    logger.info(f"Writing predictions file to {PREDICTION_FILE}")
-    submission = pd.concat(results)
-    submission.to_csv(PREDICTION_FILE, index=False)
 
 if __name__ == "__main__":
     main()
